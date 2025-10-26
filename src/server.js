@@ -1,7 +1,7 @@
-import express from "express";
-import cors from "cors";
-import dotenv from "dotenv";
-import userRoutes from "./src/routes/users.js";
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import userRoutes from './src/routes/users.js';
 
 dotenv.config();
 
@@ -11,10 +11,10 @@ app.use(cors());
 app.use(express.json()); // Parse JSON bodies
 
 // Routes
-app.use("/api/users", userRoutes);
+app.use('/api/users', userRoutes);
 
-app.get("/", (req, res) => {
-  res.send("Backend API is running 🚀");
+app.get('/', (req, res) => {
+  res.send('Backend API is running 🚀');
 });
 
 const PORT = process.env.PORT || 5000;
