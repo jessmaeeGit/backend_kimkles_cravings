@@ -1,4 +1,5 @@
 import pool from '../db.js';
+import bcrypt from 'bcrypt';
 
 export const getUsers = async (req, res) => {
   try {
@@ -9,12 +10,34 @@ export const getUsers = async (req, res) => {
   }
 };
 
-export const createUser = async (req, res) => {
+export const loginUser = async (req, res) => {
   try {
-    const { name, email } = req.body;
+    const { username, password } = req.body;
+    const result = await pool.query('SELECT * FROM users WHERE username = $1', [
+      username,
+    ]);
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    const user = result.rows[0];
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const registerUser = async (req, res) => {
+  try {
+    const { name, username, password, address, phone } = req.body;
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const result = await pool.query(
-      'INSERT INTO users (name, email) VALUES ($1, $2) RETURNING *',
-      [name, email],
+      'INSERT INTO users (name, username, password, address, phone) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [name, username, hashedPassword, address, phone],
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
