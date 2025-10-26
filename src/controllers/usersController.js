@@ -32,12 +32,12 @@ export const loginUser = async (req, res) => {
 
 export const registerUser = async (req, res) => {
   try {
-    const { name, username, password, address, phone } = req.body;
+    const { name, username, password, address, phone, role } = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const result = await pool.query(
-      'INSERT INTO users (name, username, password, address, phone) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [name, username, hashedPassword, address, phone],
+      'INSERT INTO users (name, username, password, address, phone, role) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [name, username, hashedPassword, address, phone, role],
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
