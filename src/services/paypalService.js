@@ -1,10 +1,14 @@
-import paypal from '@paypal/paypal-server-sdk';
-import { getPayPalConfig, paypalEndpoints, currencyConfig } from '../../paypal-config.js';
+import paypalSdk from '@paypal/paypal-server-sdk';
+import { getPayPalConfig } from '../../paypal-config.js';
 
-// Configure PayPal SDK
 const config = getPayPalConfig();
-const environment = new paypal.core.SandboxEnvironment(config.clientId, config.clientSecret);
-const client = new paypal.core.PayPalHttpClient(environment);
+
+// Create environment based on mode
+const environment = config.environment === 'sandbox'
+  ? new paypalSdk.core.SandboxEnvironment(config.clientId, config.clientSecret)
+  : new paypalSdk.core.LiveEnvironment(config.clientId, config.clientSecret);
+
+const client = new paypalSdk.core.PayPalHttpClient(environment);
 
 export class PayPalService {
   /**
