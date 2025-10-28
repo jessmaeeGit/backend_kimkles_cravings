@@ -1,4 +1,4 @@
-import pool from '../db.js';
+import pool from '../config/database.js';
 import bcrypt from 'bcrypt';
 
 export const getUsers = async (req, res) => {
@@ -13,19 +13,36 @@ export const getUsers = async (req, res) => {
 export const loginUser = async (req, res) => {
   try {
     const { username, password } = req.body;
+    
+    // Validate input
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password are required' });
+    }
+    
     const result = await pool.query('SELECT * FROM users WHERE username = $1', [
       username,
     ]);
+    
     if (result.rows.length === 0) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     const user = result.rows[0];
-    const isMatch = await bcrypt.compare(password, user.password);
+    
+    // Check if password_hash exists
+    if (!user.password_hash) {
+      console.error('User found but no password_hash:', user);
+      return res.status(500).json({ error: 'User account error - no password set' });
+    }
+    
+    const isMatch = await bcrypt.compare(password, user.password_hash);
+    
     if (!isMatch) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
-    res.json(user);
+    
+    res.json({ user });
   } catch (err) {
+    console.error('Login error:', err);
     res.status(500).json({ error: err.message });
   }
 };
