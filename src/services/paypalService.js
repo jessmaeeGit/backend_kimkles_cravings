@@ -1,5 +1,5 @@
 import paypal from '@paypal/paypal-server-sdk';
-import { getPayPalConfig, paypalEndpoints, currencyConfig } from '../paypal-config.js';
+import { getPayPalConfig, paypalEndpoints, currencyConfig } from '../../paypal-config.js';
 
 // Configure PayPal SDK
 const config = getPayPalConfig();
