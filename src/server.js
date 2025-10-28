@@ -1,4 +1,5 @@
 import userRoutes from './routes/users.js';
+import paymentRoutes from './routes/payments.js';
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -12,6 +13,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api/users', userRoutes);
+app.use('/api/payments', paymentRoutes);
 
 app.get('/', (req, res) => {
   res.send('Backend API is running 🚀');
