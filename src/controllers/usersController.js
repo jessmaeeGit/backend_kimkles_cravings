@@ -40,7 +40,16 @@ export const loginUser = async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
-    res.json({ user });
+    // Return user data in the expected format
+    res.json({
+      user: {
+        name: user.name,
+        username: user.username,
+        role: user.role,
+        phone: user.phone,
+        address: user.address
+      }
+    });
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: err.message });
@@ -56,7 +65,17 @@ export const registerUser = async (req, res) => {
       'INSERT INTO users (name, username, password_hash, address, phone, role) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
       [name, username, hashedPassword, address, phone, role],
     );
-    res.status(201).json(result.rows[0]);
+    
+    // Return user data in the expected format
+    res.status(201).json({
+      user: {
+        name: result.rows[0].name,
+        username: result.rows[0].username,
+        role: result.rows[0].role,
+        phone: result.rows[0].phone,
+        address: result.rows[0].address
+      }
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

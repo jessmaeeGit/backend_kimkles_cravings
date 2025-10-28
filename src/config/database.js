@@ -7,7 +7,7 @@ dotenv.config();
 
 const pool = new Pool({
   connectionString: process.env.DB_URL || process.env.DATABASE_URL || 'postgresql://localhost:5432/kimkles_cravings',
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  ssl: (process.env.DB_URL || process.env.DATABASE_URL) ? { rejectUnauthorized: false } : false
 });
 
 // Test database connection
