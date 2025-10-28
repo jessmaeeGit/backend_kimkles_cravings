@@ -61,8 +61,8 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404 handler - FIXED: Use proper wildcard pattern
-app.use('/*', (req, res) => {
+// 404 handler - Use app.all instead of app.use with wildcard
+app.all('*', (req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
