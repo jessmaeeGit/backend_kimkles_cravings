@@ -1,38 +1,32 @@
-import paypalSdk from '@paypal/paypal-server-sdk';
+import { Client, Environment } from '@paypal/paypal-server-sdk';
 import { getPayPalConfig } from '../../paypal-config.js';
 
 const config = getPayPalConfig();
 
-// Create environment based on mode
-const environment = config.environment === 'sandbox'
-  ? new paypalSdk.core.SandboxEnvironment(config.clientId, config.clientSecret)
-  : new paypalSdk.core.LiveEnvironment(config.clientId, config.clientSecret);
-
-const client = new paypalSdk.core.PayPalHttpClient(environment);
+// Create PayPal client
+const paypalClient = new Client({
+    clientCredentialsAuthCredentials: {
+        oAuthClientId: config.clientId,
+        oAuthClientSecret: config.clientSecret
+    },
+    environment: config.environment === 'sandbox' 
+        ? Environment.Sandbox 
+        : Environment.Production
+});
 
 export class PayPalService {
   /**
    * Create a PayPal order
-   * @param {Object} orderData - Order details
-   * @param {Array} orderData.items - Array of order items
-   * @param {number} orderData.total - Total amount
-   * @param {string} orderData.currency - Currency code
-   * @param {string} orderData.returnUrl - Return URL after payment
-   * @param {string} orderData.cancelUrl - Cancel URL
-   * @returns {Promise<Object>} PayPal order response
    */
   static async createOrder(orderData) {
     try {
-      const { items, total, currency = currencyConfig.currency, returnUrl, cancelUrl } = orderData;
+      const { items, total, currency = 'PHP', returnUrl, cancelUrl } = orderData;
       
       // Calculate breakdown
       const itemTotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-      const tax = 0; // No tax for now
       const shipping = total - itemTotal;
       
-      const request = new paypal.orders.OrdersCreateRequest();
-      request.prefer('return=representation');
-      request.requestBody({
+      const orderRequest = {
         intent: 'CAPTURE',
         purchase_units: [{
           reference_id: `order_${Date.now()}`,
@@ -47,10 +41,6 @@ export class PayPalService {
               shipping: {
                 currency_code: currency,
                 value: shipping.toFixed(2)
-              },
-              tax_total: {
-                currency_code: currency,
-                value: tax.toFixed(2)
               }
             }
           },
@@ -60,8 +50,7 @@ export class PayPalService {
               currency_code: currency,
               value: item.price.toFixed(2)
             },
-            quantity: item.quantity.toString(),
-            category: 'PHYSICAL_GOODS'
+            quantity: item.quantity.toString()
           }))
         }],
         application_context: {
@@ -71,13 +60,14 @@ export class PayPalService {
           return_url: returnUrl,
           cancel_url: cancelUrl
         }
-      });
+      };
 
-      const response = await client.execute(request);
+      const response = await paypalClient.ordersController.ordersCreate(orderRequest);
+      
       return {
         success: true,
         orderId: response.result.id,
-        approvalUrl: response.result.links.find(link => link.rel === 'approve')?.href,
+        approvalUrl: response.result.links?.find(link => link.rel === 'approve')?.href,
         data: response.result
       };
     } catch (error) {
@@ -91,20 +81,15 @@ export class PayPalService {
 
   /**
    * Capture a PayPal order
-   * @param {string} orderId - PayPal order ID
-   * @returns {Promise<Object>} Capture response
    */
   static async captureOrder(orderId) {
     try {
-      const request = new paypal.orders.OrdersCaptureRequest(orderId);
-      request.requestBody({});
-
-      const response = await client.execute(request);
+      const response = await paypalClient.ordersController.ordersCapture(orderId, {});
       
       if (response.result.status === 'COMPLETED') {
         return {
           success: true,
-          transactionId: response.result.purchase_units[0].payments.captures[0].id,
+          transactionId: response.result.purchase_units?.[0]?.payments?.captures?.[0]?.id,
           status: response.result.status,
           data: response.result
         };
@@ -126,13 +111,10 @@ export class PayPalService {
 
   /**
    * Get order details from PayPal
-   * @param {string} orderId - PayPal order ID
-   * @returns {Promise<Object>} Order details
    */
   static async getOrderDetails(orderId) {
     try {
-      const request = new paypal.orders.OrdersGetRequest(orderId);
-      const response = await client.execute(request);
+      const response = await paypalClient.ordersController.ordersGet(orderId);
       
       return {
         success: true,
@@ -149,16 +131,9 @@ export class PayPalService {
 
   /**
    * Verify webhook signature
-   * @param {Object} headers - Request headers
-   * @param {string} body - Request body
-   * @param {string} webhookId - PayPal webhook ID
-   * @returns {boolean} Verification result
    */
   static verifyWebhook(headers, body, webhookId) {
     try {
-      // In a real implementation, you would verify the webhook signature
-      // using PayPal's webhook verification process
-      // For now, we'll do a basic check
       return headers['paypal-transmission-id'] && headers['paypal-cert-id'];
     } catch (error) {
       console.error('Webhook verification error:', error);
