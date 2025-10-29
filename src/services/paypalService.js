@@ -1,18 +1,48 @@
-import { Client, Environment } from '@paypal/paypal-server-sdk';
+import { Client, Environment, OrdersController } from '@paypal/paypal-server-sdk';
 import { getPayPalConfig } from '../../paypal-config.js';
 
-const config = getPayPalConfig();
+// Create PayPal client and controller lazily
+let paypalClient = null;
+let ordersController = null;
 
-// Create PayPal client
-const paypalClient = new Client({
-    clientCredentialsAuthCredentials: {
-        oAuthClientId: config.clientId,
-        oAuthClientSecret: config.clientSecret
-    },
-    environment: config.environment === 'sandbox' 
-        ? Environment.Sandbox 
-        : Environment.Production
-});
+const getOrdersController = () => {
+  if (!ordersController) {
+    if (!paypalClient) {
+      const config = getPayPalConfig();
+      
+      console.log('PayPal config:', {
+        clientId: config.clientId ? '***' + config.clientId.slice(-4) : 'undefined',
+        clientSecret: config.clientSecret ? '***' + config.clientSecret.slice(-4) : 'undefined',
+        environment: config.environment
+      });
+      
+      if (!config.clientId || !config.clientSecret) {
+        throw new Error('PayPal credentials not configured. Please set PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET environment variables.');
+      }
+      
+      try {
+        paypalClient = new Client({
+          clientCredentialsAuthCredentials: {
+            oAuthClientId: config.clientId,
+            oAuthClientSecret: config.clientSecret
+          },
+          environment: config.environment === 'sandbox' 
+            ? Environment.Sandbox 
+            : Environment.Production
+        });
+        
+        console.log('PayPal client created successfully');
+      } catch (error) {
+        console.error('Failed to create PayPal client:', error);
+        throw error;
+      }
+    }
+    
+    ordersController = new OrdersController(paypalClient);
+    console.log('OrdersController created successfully');
+  }
+  return ordersController;
+};
 
 export class PayPalService {
   /**
@@ -20,6 +50,7 @@ export class PayPalService {
    */
   static async createOrder(orderData) {
     try {
+      const client = getPayPalClient();
       const { items, total, currency = 'PHP', returnUrl, cancelUrl } = orderData;
       
       // Calculate breakdown
@@ -62,7 +93,11 @@ export class PayPalService {
         }
       };
 
-      const response = await paypalClient.ordersController.ordersCreate(orderRequest);
+      console.log('Creating PayPal order with request:', JSON.stringify(orderRequest, null, 2));
+      
+      const response = await client.ordersController.ordersCreate(orderRequest);
+      
+      console.log('PayPal order response:', JSON.stringify(response, null, 2));
       
       return {
         success: true,
@@ -84,7 +119,8 @@ export class PayPalService {
    */
   static async captureOrder(orderId) {
     try {
-      const response = await paypalClient.ordersController.ordersCapture(orderId, {});
+      const client = getPayPalClient();
+      const response = await client.ordersController.ordersCapture(orderId, {});
       
       if (response.result.status === 'COMPLETED') {
         return {
@@ -114,7 +150,8 @@ export class PayPalService {
    */
   static async getOrderDetails(orderId) {
     try {
-      const response = await paypalClient.ordersController.ordersGet(orderId);
+      const client = getPayPalClient();
+      const response = await client.ordersController.ordersGet(orderId);
       
       return {
         success: true,
